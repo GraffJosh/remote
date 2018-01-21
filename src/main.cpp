@@ -6,12 +6,6 @@
 // Uncomment only the TFT model you are using
 #define ILI9341
 
-//POWER SAVING SETTING
-#define SCAN_COUNT_SLEEP 15
-#define PNP_PWR_TRANSISTOR
-
-#define LCD_PWR_PIN 16 // For AZSMZ TFT 1.6X
-
 #include "ESP8266WiFi.h"
 #include <XPT2046_Touchscreen.h>
 #include <SPI.h>
@@ -20,16 +14,36 @@
 #include "ILI9341_SPI.h" // Hardware-specific library
 #include <MiniGrafx.h>
 
-#define TFT_DC     0 // For AZSMZ TFT 1.6X
-#define TFT_CS     2 // For AZSMZ TFT 1.6X
+// #define D0    16
+// #define D1    5
+// #define D2    4
+// #define D3    0
+// #define D4    2
+// #define D5    14
+// #define D6    12
+// #define D7    13
+// #define D8    15
+// #define D9    3
+// #define D10   1
 
-#define T_CS  D3
-#define TIRQ  D4
+//POWER SAVING SETTING
+#define SCAN_COUNT_SLEEP 150
+#define PNP_PWR_TRANSISTOR
+
+#define LCD_PWR_PIN 16 // For AZSMZ TFT 1.6X
+
+#define LCD_DC     0 // For AZSMZ TFT 1.6X
+#define LCD_CS     2 // For AZSMZ TFT 1.6X
+// #define LCD_DC D2
+// #define LCD_CS D1
+
+#define Touch_CS  2
+#define Touch_IRQ  4
 
 // #define JPG_SS    D2
-#define JPG_MOSI  D7
-#define JPG_MISO  D6
-#define JPG_SCK   D5
+#define JPG_MOSI  13
+#define JPG_MISO  12
+#define JPG_SCK   14
 #define JPG_RST   -1
 #define HEIGHT 320
 #define WIDTH 240
@@ -70,12 +84,12 @@ uint16_t palette[] = {ILI9341_BLACK, // 0
                       ILI9341_YELLOW}; // 15
 uint8_t scan_count = 0;
 
-Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC);
+Adafruit_ILI9341 tft = Adafruit_ILI9341(LCD_CS, LCD_DC);
 
-// ILI9341_SPI grafx_driver = ILI9341_SPI(TFT_CS,TFT_DC);//, JPG_MOSI,JPG_SCK, JPG_RST, JPG_MISO);
-XPT2046_Touchscreen ts(T_CS, TIRQ);  // Param 2 - Touch IRQ Pin - interrupt enabled polling
+XPT2046_Touchscreen ts(Touch_CS, Touch_IRQ);  // Param 2 - Touch IRQ Pin - interrupt enabled polling
 
-// ILI9341_SPI grafx_driver = ILI9341_SPI(TFT_CS, TFT_DC);
+// ILI9341_SPI grafx_driver = ILI9341_SPI(LCD_CS,LCD_DC);//, JPG_MOSI,JPG_SCK, JPG_RST, JPG_MISO);
+// // ILI9341_SPI grafx_driver = ILI9341_SPI(LCD_CS, LCD_DC);
 // MiniGrafx gfx = MiniGrafx(&grafx_driver, BITS_PER_PIXEL, palette);
 
 void setup() {
@@ -84,8 +98,10 @@ void setup() {
 
   tft.begin();
   //
+  ts.begin();
+  ts.setRotation(1);
   tft.setRotation(1);
-  //
+
   // tft.setTextSize(5);
   // tft.fillScreen(TFT_BLUE);
   // tft.setTextColor(TFT_WHITE, TFT_RED);
@@ -95,7 +111,6 @@ void setup() {
   // tft.setTextColor(TFT_WHITE, TFT_ORANGE);
 
   // gfx.setColor(0);
-  //   // Fill the buffer with color 0 (Black)
   //   gfx.fillBuffer(0);
   // gfx.commit();
 
@@ -103,6 +118,12 @@ void setup() {
 }
 
 void loop() {
+  // gfx.fillBuffer(0);
+  //   gfx.setColor(0);
+  //   gfx.drawLine(0, 0, 20, 20);
+  //   gfx.setColor(0);
+  //   gfx.fillCircle(20, 20, 5);
+  //   gfx.commit();
 
   // clear old graph
   // tft.fillRect(0, BANNER_HEIGHT, 320, 224, TFT_BLACK);
@@ -114,15 +135,9 @@ void loop() {
   tft.setTextSize(1);
   tft.setCursor(10,10);
   tft.print("test");
+  //
+  // tft.print(scan_count);
 
-  tft.print(scan_count);
-
-  // gfx.fillBuffer(0);
-    // gfx.setColor(0);
-    // gfx.drawLine(0, 0, 20, 20);
-    // gfx.setColor(0);
-    // gfx.fillCircle(20, 20, 5);
-    // gfx.commit();
 
   // print WiFi stat
   // tft.setTextColor(TFT_WHITE);
@@ -130,7 +145,6 @@ void loop() {
   // tft.print(" networks found, suggested channels: ");
 
 
-  if (ts.tirqTouched()) {
     if (ts.touched()) {
     tft.setCursor(10,5);
     tft.setTextSize(.5);
@@ -141,14 +155,16 @@ void loop() {
       tft.print(p.x);
       tft.print(", y = ");
       tft.print(p.y);
+      tft.print("D4: ");
+      tft.print(D4);
       delay(30);
       // Serial.println();
     }
-  }
+
 
 
   // Wait a bit before scanning again
-  delay(5000);
+  // delay(5000);
 
   //POWER SAVING
   if (++scan_count >= SCAN_COUNT_SLEEP) {
