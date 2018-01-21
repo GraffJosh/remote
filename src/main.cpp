@@ -11,6 +11,7 @@
 #include <SPI.h>
 #include <Adafruit_GFX.h>    // Core graphics library
 #include <Adafruit_ILI9341.h>
+#include <Fonts\FreeMonoBold9pt7b.h>
 #include "ILI9341_SPI.h" // Hardware-specific library
 #include <MiniGrafx.h>
 
@@ -38,13 +39,13 @@
 // #define LCD_CS D1
 
 #define Touch_CS  2
-#define Touch_IRQ  4
+#define Touch_IRQ  5
 
 // #define JPG_SS    D2
-#define JPG_MOSI  13
-#define JPG_MISO  12
-#define JPG_SCK   14
-#define JPG_RST   -1
+// #define JPG_MOSI  13
+// #define JPG_MISO  12
+// #define JPG_SCK   14
+// #define JPG_RST   -1
 #define HEIGHT 320
 #define WIDTH 240
 
@@ -85,9 +86,12 @@ uint16_t palette[] = {ILI9341_BLACK, // 0
 uint8_t scan_count = 0;
 
 Adafruit_ILI9341 tft = Adafruit_ILI9341(LCD_CS, LCD_DC);
-
 XPT2046_Touchscreen ts(Touch_CS, Touch_IRQ);  // Param 2 - Touch IRQ Pin - interrupt enabled polling
 
+
+bool update = true;
+int updates = 0;
+TS_Point last_touch;
 // ILI9341_SPI grafx_driver = ILI9341_SPI(LCD_CS,LCD_DC);//, JPG_MOSI,JPG_SCK, JPG_RST, JPG_MISO);
 // // ILI9341_SPI grafx_driver = ILI9341_SPI(LCD_CS, LCD_DC);
 // MiniGrafx gfx = MiniGrafx(&grafx_driver, BITS_PER_PIXEL, palette);
@@ -96,11 +100,11 @@ void setup() {
   pinMode(LCD_PWR_PIN, OUTPUT);   // sets the pin as output
   digitalWrite(LCD_PWR_PIN, LOW); // PNP transistor on
 
-  tft.begin();
   //
+  tft.begin();
   ts.begin();
-  ts.setRotation(1);
-  tft.setRotation(1);
+  ts.setRotation(2);
+  tft.setRotation(2);
 
   // tft.setTextSize(5);
   // tft.fillScreen(TFT_BLUE);
@@ -113,7 +117,8 @@ void setup() {
   // gfx.setColor(0);
   //   gfx.fillBuffer(0);
   // gfx.commit();
-
+  update = true;
+  last_touch = ts.getPoint();
   delay(100);
 }
 
@@ -128,13 +133,8 @@ void loop() {
   // clear old graph
   // tft.fillRect(0, BANNER_HEIGHT, 320, 224, TFT_BLACK);
   // tft.setTextSize(1);
-  delay(500);
 
-  tft.fillScreen(TFT_BLACK);
-  tft.setTextColor(TFT_MAGENTA,TFT_BLACK);
-  tft.setTextSize(1);
-  tft.setCursor(10,10);
-  tft.print("test");
+
   //
   // tft.print(scan_count);
 
@@ -144,31 +144,50 @@ void loop() {
   // tft.setCursor(0, BANNER_HEIGHT);
   // tft.print(" networks found, suggested channels: ");
 
-
+if (ts.tirqTouched()) {
     if (ts.touched()) {
-    tft.setCursor(10,5);
-    tft.setTextSize(.5);
-      TS_Point p = ts.getPoint();
+      TS_Point curr_touch = ts.getPoint();
+      if (curr_touch.x != last_touch.x
+        || curr_touch.y != last_touch.y
+        || curr_touch.z != last_touch.z)
+        {
+          update = true;
+          last_touch.x = curr_touch.x;
+          last_touch.y = curr_touch.y;
+          last_touch.z = curr_touch.z;
+        }
+    }
+  }
+    if(update)
+    {
+
+      tft.fillScreen(TFT_BLACK);
+      tft.setTextColor(TFT_MAGENTA,TFT_BLACK);
+
+      tft.setCursor(10,25);
+      tft.setTextSize(.5);
+      tft.setFont(&FreeMonoBold9pt7b);
       tft.print("Pressure = ");
-      tft.print(p.z);
+      tft.print(last_touch.z);
       tft.print(", x = ");
-      tft.print(p.x);
+      tft.print(last_touch.x);
       tft.print(", y = ");
-      tft.print(p.y);
-      tft.print("D4: ");
-      tft.print(D4);
-      delay(30);
+      tft.print(last_touch.y);
+      tft.print(", updates: = ");
+      tft.print(++updates);
+
+      update = false;
       // Serial.println();
     }
-
+    delay(50);
 
 
   // Wait a bit before scanning again
   // delay(5000);
 
   //POWER SAVING
-  if (++scan_count >= SCAN_COUNT_SLEEP) {
-    pinMode(LCD_PWR_PIN, INPUT);   // disable pin
-    ESP.deepSleep(0);
-  }
+  // if (++scan_count >= SCAN_COUNT_SLEEP) {
+  //   pinMode(LCD_PWR_PIN, INPUT);   // disable pin
+  //   ESP.deepSleep(0);
+  // }
 }
