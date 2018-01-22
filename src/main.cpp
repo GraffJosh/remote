@@ -39,7 +39,7 @@
 // #define LCD_CS D1
 
 #define Touch_CS  2
-#define Touch_IRQ  5
+#define Touch_IRQ  4
 
 // #define JPG_SS    D2
 // #define JPG_MOSI  13
@@ -104,7 +104,7 @@ void setup() {
   tft.begin();
   ts.begin();
   ts.setRotation(2);
-  tft.setRotation(2);
+  tft.setRotation(4);
 
   // tft.setTextSize(5);
   // tft.fillScreen(TFT_BLUE);
@@ -144,19 +144,21 @@ void loop() {
   // tft.setCursor(0, BANNER_HEIGHT);
   // tft.print(" networks found, suggested channels: ");
 
-if (ts.tirqTouched()) {
-    if (ts.touched()) {
+  if (ts.tirqTouched()) {
+    // if (ts.touched()) {
       TS_Point curr_touch = ts.getPoint();
-      if (curr_touch.x != last_touch.x
-        || curr_touch.y != last_touch.y
-        || curr_touch.z != last_touch.z)
-        {
-          update = true;
-          last_touch.x = curr_touch.x;
-          last_touch.y = curr_touch.y;
-          last_touch.z = curr_touch.z;
-        }
-    }
+      if(curr_touch.z >2000){
+        if (curr_touch.x != last_touch.x
+          || curr_touch.y != last_touch.y
+          || curr_touch.z != last_touch.z)
+          {
+            update = true;
+            last_touch.x = curr_touch.x;
+            last_touch.y = curr_touch.y;
+            last_touch.z = curr_touch.z;
+          }
+      }
+    // }
   }
     if(update)
     {
@@ -168,13 +170,15 @@ if (ts.tirqTouched()) {
       tft.setTextSize(.5);
       tft.setFont(&FreeMonoBold9pt7b);
       tft.print("Pressure = ");
-      tft.print(last_touch.z);
-      tft.print(", x = ");
-      tft.print(last_touch.x);
-      tft.print(", y = ");
-      tft.print(last_touch.y);
-      tft.print(", updates: = ");
+      tft.println(last_touch.z);
+      tft.print("x = ");
+      tft.println(last_touch.x);
+      tft.print("y = ");
+      tft.println(last_touch.y);
+      tft.print("updates: = ");
       tft.print(++updates);
+      tft.fillCircle(last_touch.x/16,last_touch.y/11,4,TFT_WHITE);
+
 
       update = false;
       // Serial.println();
