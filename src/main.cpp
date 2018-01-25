@@ -14,6 +14,7 @@
 #include <Fonts\FreeMonoBold9pt7b.h>
 #include "ILI9341_SPI.h" // Hardware-specific library
 #include <MiniGrafx.h>
+#include <Button.hpp>
 
 // #define D0    16
 // #define D1    5
@@ -55,16 +56,6 @@ int BITS_PER_PIXEL = 4; // 2^4 = 16 colors
 #define BANNER_HEIGHT 16
 
 
-// // define
-#define TFT_WHITE   ILI9341_WHITE   /* 255, 255, 255 */
-#define TFT_BLACK   ILI9341_BLACK   /*   0,   0,   0 */
-#define TFT_RED     ILI9341_RED     /* 255,   0,   0 */
-#define TFT_ORANGE  ILI9341_ORANGE  /* 255, 165,   0 */
-#define TFT_YELLOW  ILI9341_YELLOW  /* 255, 255,   0 */
-#define TFT_GREEN   ILI9341_GREEN   /*   0, 255,   0 */
-#define TFT_CYAN    ILI9341_CYAN    /*   0, 255, 255 */
-#define TFT_BLUE    ILI9341_BLUE    /*   0,   0, 255 */
-#define TFT_MAGENTA ILI9341_MAGENTA /* 255,   0, 255 */
 
 // defines the colors usable in the paletted 16 color frame buffer
 uint16_t palette[] = {ILI9341_BLACK, // 0
@@ -85,104 +76,109 @@ uint16_t palette[] = {ILI9341_BLACK, // 0
                       ILI9341_YELLOW}; // 15
 uint8_t scan_count = 0;
 
-Adafruit_ILI9341 tft = Adafruit_ILI9341(LCD_CS, LCD_DC);
+Adafruit_ILI9341* tft = new Adafruit_ILI9341(LCD_CS, LCD_DC);
 XPT2046_Touchscreen ts(Touch_CS, Touch_IRQ);  // Param 2 - Touch IRQ Pin - interrupt enabled polling
 
 
 bool update = true;
 int updates = 0;
-TS_Point last_touch;
-// ILI9341_SPI grafx_driver = ILI9341_SPI(LCD_CS,LCD_DC);//, JPG_MOSI,JPG_SCK, JPG_RST, JPG_MISO);
-// // ILI9341_SPI grafx_driver = ILI9341_SPI(LCD_CS, LCD_DC);
-// MiniGrafx gfx = MiniGrafx(&grafx_driver, BITS_PER_PIXEL, palette);
+int screen_num = 0;
 
+TS_Point last_touch;
 void setup() {
   pinMode(LCD_PWR_PIN, OUTPUT);   // sets the pin as output
   digitalWrite(LCD_PWR_PIN, LOW); // PNP transistor on
 
   //
-  tft.begin();
+  tft->begin();
   ts.begin();
   ts.setRotation(2);
-  tft.setRotation(4);
+  tft->setRotation(4);
 
-  // tft.setTextSize(5);
-  // tft.fillScreen(TFT_BLUE);
-  // tft.setTextColor(TFT_WHITE, TFT_RED);
-  // tft.setCursor(0, 50);
-  //
-  // tft.print(" Thank you for calling JPG Industries");
-  // tft.setTextColor(TFT_WHITE, TFT_ORANGE);
+  tft->setFont(&FreeMonoBold9pt7b);
 
-  // gfx.setColor(0);
-  //   gfx.fillBuffer(0);
-  // gfx.commit();
-  update = true;
-  last_touch = ts.getPoint();
+  // update = true;
+  // last_touch = ts.getPoint();
   delay(100);
 }
 
+int draw_home(Adafruit_ILI9341* tft, TS_Point *last_touch) {
+  int button = -1;
+
+  //left side
+  if (last_touch->x<2098) {
+
+    if(last_touch->y<1266)      //top
+    {
+      button = 1;
+      
+    }else if(last_touch->y<2533)//mid
+    {
+      button = 3;
+    }else
+    {
+      button = 5;
+    }
+    //right side
+  } else {
+    if(last_touch->y<1266)      //top
+    {
+      button = 2;
+    }else if(last_touch->y<2533)//mid
+    {
+      button = 4;
+    }else
+    {
+      button = 6;
+    }
+  }
+
+  tft->fillScreen(ILI9341_BLACK);
+
+  tft->setCursor(10,20);
+  tft->print("home, selected: ");
+  tft->println(button);
+
+  tft->drawLine(120,0,120,340,ILI9341_WHITE);
+
+  tft->drawLine(0,110,240,110,ILI9341_WHITE);
+  tft->drawLine(0,220,240,220,ILI9341_WHITE);
+
+  return 0;
+}
+
 void loop() {
-  // gfx.fillBuffer(0);
-  //   gfx.setColor(0);
-  //   gfx.drawLine(0, 0, 20, 20);
-  //   gfx.setColor(0);
-  //   gfx.fillCircle(20, 20, 5);
-  //   gfx.commit();
-
-  // clear old graph
-  // tft.fillRect(0, BANNER_HEIGHT, 320, 224, TFT_BLACK);
-  // tft.setTextSize(1);
-
-
-  //
-  // tft.print(scan_count);
-
-
-  // print WiFi stat
-  // tft.setTextColor(TFT_WHITE);
-  // tft.setCursor(0, BANNER_HEIGHT);
-  // tft.print(" networks found, suggested channels: ");
-
   if (ts.tirqTouched()) {
     // if (ts.touched()) {
-      TS_Point curr_touch = ts.getPoint();
-      if(curr_touch.z >2000){
-        if (curr_touch.x != last_touch.x
-          || curr_touch.y != last_touch.y
-          || curr_touch.z != last_touch.z)
-          {
-            update = true;
-            last_touch.x = curr_touch.x;
-            last_touch.y = curr_touch.y;
-            last_touch.z = curr_touch.z;
-          }
+    TS_Point curr_touch = ts.getPoint();
+    if(curr_touch.z >2000){
+      if (curr_touch.x != last_touch.x
+        || curr_touch.y != last_touch.y
+        || curr_touch.z != last_touch.z)
+        {
+          update = true;
+          last_touch.x = curr_touch.x;
+          last_touch.y = curr_touch.y;
+          last_touch.z = curr_touch.z;
+          // pos = last_touch->x/16,last_touch->y/11;
+        }
       }
-    // }
-  }
-    if(update)
-    {
-
-      tft.fillScreen(TFT_BLACK);
-      tft.setTextColor(TFT_MAGENTA,TFT_BLACK);
-
-      tft.setCursor(10,25);
-      tft.setTextSize(.5);
-      tft.setFont(&FreeMonoBold9pt7b);
-      tft.print("Pressure = ");
-      tft.println(last_touch.z);
-      tft.print("x = ");
-      tft.println(last_touch.x);
-      tft.print("y = ");
-      tft.println(last_touch.y);
-      tft.print("updates: = ");
-      tft.print(++updates);
-      tft.fillCircle(last_touch.x/16,last_touch.y/11,4,TFT_WHITE);
-
-
-      update = false;
-      // Serial.println();
+      // }
     }
+
+  if(update)
+  {
+    tft->setTextColor(ILI9341_MAGENTA,ILI9341_BLACK);
+    switch (screen_num) {
+      case 0://home screen
+        screen_num = draw_home(tft,&last_touch);
+      break;
+      case 1://IOT screen
+      break;
+    }
+    update = false;
+  }
+
     delay(50);
 
 
