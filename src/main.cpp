@@ -7,6 +7,9 @@
 #define ILI9341
 
 #include "ESP8266WiFi.h"
+#include "WiFiClient.h"
+#include <ESP8266mDNS.h>
+#include <ESP8266WebServer.h>
 #include <XPT2046_Touchscreen.h>
 #include <SPI.h>
 #include <Adafruit_GFX.h>    // Core graphics library
@@ -16,47 +19,25 @@
 #include <MiniGrafx.h>
 #include <Button.hpp>
 
-// #define D0    16
-// #define D1    5
-// #define D2    4
-// #define D3    0
-// #define D4    2
-// #define D5    14
-// #define D6    12
-// #define D7    13
-// #define D8    15
-// #define D9    3
-// #define D10   1
 
+void handleWebReq_RootPath();
 //POWER SAVING SETTING
 #define SCAN_COUNT_SLEEP 150
 #define PNP_PWR_TRANSISTOR
 
-#define LCD_PWR_PIN 16 // For AZSMZ TFT 1.6X
+#define LCD_PWR_PIN 16
 
-#define LCD_DC     0 // For AZSMZ TFT 1.6X
-#define LCD_CS     2 // For AZSMZ TFT 1.6X
-// #define LCD_DC D2
-// #define LCD_CS D1
+#define LCD_DC     0
+#define LCD_CS     2
 
 #define Touch_CS  2
 #define Touch_IRQ  4
 
-// #define JPG_SS    D2
-// #define JPG_MOSI  13
-// #define JPG_MISO  12
-// #define JPG_SCK   14
-// #define JPG_RST   -1
+
 #define HEIGHT 320
 #define WIDTH 240
 
 int BITS_PER_PIXEL = 4; // 2^4 = 16 colors
-
-
-#define BANNER_HEIGHT 16
-
-
-
 // defines the colors usable in the paletted 16 color frame buffer
 uint16_t palette[] = {ILI9341_BLACK, // 0
                       ILI9341_WHITE, // 1
@@ -78,17 +59,27 @@ uint8_t scan_count = 0;
 
 Adafruit_ILI9341* tft = new Adafruit_ILI9341(LCD_CS, LCD_DC);
 XPT2046_Touchscreen ts(Touch_CS, Touch_IRQ);  // Param 2 - Touch IRQ Pin - interrupt enabled polling
+TS_Point last_touch;
 
+const char* ssid = "Apt. #3";
+const char* password = "Chowfornow3344";
+IPAddress ip(192, 168, 1, 114);
+IPAddress gateway(192, 168, 1, 1);
+IPAddress subnet(255, 255, 255, 0);
+IPAddress dns(192, 168, 1, 1);
+ESP8266WebServer server(80);
+
+const char* host = "data.sparkfun.com";
+IPAddress controller_IP(192, 168, 1, 8); // IP serveur - Server IP
+const int   controller_port = 8888;
 
 bool update = true;
 int updates = 0;
 int screen_num = 0;
 
-TS_Point last_touch;
 void setup() {
   pinMode(LCD_PWR_PIN, OUTPUT);   // sets the pin as output
   digitalWrite(LCD_PWR_PIN, LOW); // PNP transistor on
-
   //
   tft->begin();
   ts.begin();
@@ -97,6 +88,17 @@ void setup() {
 
   tft->setFont(&FreeMonoBold9pt7b);
 
+  WiFi.mode(WIFI_STA);
+  WiFi.config(ip, gateway, subnet,dns);
+  WiFi.begin(ssid, password);
+  while (WiFi.waitForConnectResult() != WL_CONNECTED) {
+  delay(3000);
+  ESP.restart();
+  }
+
+  server.on("/", handleWebReq_RootPath);
+  server.begin();
+
   // update = true;
   // last_touch = ts.getPoint();
   delay(100);
@@ -104,17 +106,46 @@ void setup() {
 
 int draw_home(Adafruit_ILI9341* tft, TS_Point *last_touch) {
   int button = -1;
-
+  WiFiClient client;
   //left side
   if (last_touch->x<2098) {
 
     if(last_touch->y<1266)      //top
     {
       button = 1;
-      
+
     }else if(last_touch->y<2533)//mid
     {
       button = 3;
+      tft->print("connecting to: ");
+      tft->println(controller_IP);
+      if (button = client.connect("192.168.1.8", 8888))
+      {
+        tft->println("connected");
+
+        tft->println("[Sending a request]");
+        client.print(String("GET /") + " HTTP/1.1\r\n" +
+                     "Host: " + controller_IP + "\r\n" +
+                     "Connection: close\r\n" +
+                     "\r\n"
+                    );
+
+        tft->println("[Response:]");
+        while (client.connected())
+        {
+          if (client.available())
+          {
+            String line = client.readStringUntil('\n');
+            tft->println(line);
+          }
+        }
+        client.stop();
+        tft->println("\n[Disconnected]");
+      }else{
+        tft->print("Connection failed: ");
+        tft->println(button);
+        delay(1000);
+      }
     }else
     {
       button = 5;
@@ -148,6 +179,8 @@ int draw_home(Adafruit_ILI9341* tft, TS_Point *last_touch) {
 }
 
 void loop() {
+
+  server.handleClient();
   if (ts.tirqTouched()) {
     // if (ts.touched()) {
     TS_Point curr_touch = ts.getPoint();
@@ -190,4 +223,11 @@ void loop() {
   //   pinMode(LCD_PWR_PIN, INPUT);   // disable pin
   //   ESP.deepSleep(0);
   // }
+
+}
+
+
+
+void handleWebReq_RootPath(){
+  server.send(200, "text/plain", "Remote is alive");
 }
